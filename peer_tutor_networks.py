@@ -20,6 +20,9 @@ practice, this merely resulted in the networks' converging to each other and /th
 
 This makes sense as the splitting the data up meant that each network was only given approximately 1/n of the data each
 epoch (where n is the number of networks).
+
+HOWEVER, compensating by increasing the learning rate /does/ provide tangible benefits over the control (1 network).
+TODO: Study how learning rate affects this compensatory effect.
 """
 
 import torch
