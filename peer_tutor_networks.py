@@ -30,23 +30,29 @@ import torch.nn as nn
 import torchvision
 import torch.optim as optim
 import torch.nn.functional as F
+import torch.backends.cudnn as cudnn
 
 # Basic Neural Network Training constants
 n_epochs = 10
 batch_size_train = 64
 batch_size_test = 1000
-learning_rate = 0.01
+learning_rate = 0.02
 momentum = 0.5
 log_interval = 10
 
 # Set up the peer-classroom environment
-number_of_networks = 3
-number_of_shared_training_batches = 0  # The number of batches that all networks will be trained on.
-number_of_shared_comparison_batches = 20  # The number of training batches that will be reserved for tutoring
+number_of_networks = 2
+number_of_shared_training_batches = 10  # The number of batches that all networks will be trained on.
+number_of_shared_comparison_batches = 10  # The number of training batches that will be reserved for tutoring
+
+# Hardware
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print('Device: ' + str(device))
+
 
 # Set up the data to train on.
 train_loader = torch.utils.data.DataLoader(
-  torchvision.datasets.MNIST('/files/', train=True, download=True,
+  torchvision.datasets.MNIST('./files/', train=True, download=True,
                              transform=torchvision.transforms.Compose([
                                torchvision.transforms.ToTensor(),
                                torchvision.transforms.Normalize(
@@ -55,7 +61,7 @@ train_loader = torch.utils.data.DataLoader(
   batch_size=batch_size_train, shuffle=True)
 
 test_loader = torch.utils.data.DataLoader(
-  torchvision.datasets.MNIST('/files/', train=False, download=True,
+  torchvision.datasets.MNIST('./files/', train=False, download=True,
                              transform=torchvision.transforms.Compose([
                                torchvision.transforms.ToTensor(),
                                torchvision.transforms.Normalize(
@@ -69,11 +75,13 @@ train_counter = []
 test_losses = []
 test_counter = [i*len(train_loader.dataset) for i in range(n_epochs + 1)]
 
+
 # Record the training losses to file so we can compare the networks later.
 def record_training_loss(epoch_number, batch_number, loss, network_id,
                          path='./peer_tutor_model_stats/peer_tutor_training_loss{}.csv'):
     with open(path.format(network_id), 'a') as file:
         file.write('{},{},{}\n'.format(epoch_number, batch_number, loss))  # Write a new line to the csv file.
+
 
 # Record the testing losses to file so we can compare the networks later.
 def record_testing(epoch_number, loss, accuracy, network_id,
@@ -86,6 +94,7 @@ def train(epoch, network, optimizer, number_of_shared_batches, number_of_network
     print('TRAINING NETWORK WITH ID: {}'.format(network.id))
     network.train()
     for batch_idx, (data, target) in enumerate(train_loader):
+        data, target = data.to(device), target.to(device)  # Use the GPU
         if (batch_idx/10 > number_of_compared_batches) and \
                 (batch_idx/10 < number_of_shared_batches + number_of_compared_batches
                  or (batch_idx/10 % number_of_networks == network.id)):
@@ -121,6 +130,7 @@ def test(network, epoch=None, pre_tutoring=False):
     correct = 0
     with torch.no_grad():
         for data, target in test_loader:
+            data, target = data.to(device), target.to(device)  # Use the GPU
             output = network(data)
             test_loss += F.nll_loss(output, target, size_average=False).item()
             pred = output.data.max(1, keepdim=True)[1]
@@ -163,6 +173,7 @@ def train_all_networks(networks, optimizers, number_of_shared_batches, number_of
 
 def peer_tutor_all_networks(networks, number_of_networks, number_of_comparison_batches):
     for batch_idx, (data, target) in enumerate(train_loader):
+        data, target = data.to(device), target.to(device)  # Use the GPU
         # We will test each network using the same batch of data.
         if batch_idx/10 < number_of_comparison_batches:
             # We only will test each network with the first few batches that we reserved for comparison
@@ -192,7 +203,7 @@ def peer_tutor_all_networks(networks, number_of_networks, number_of_comparison_b
             # Each row is a network, but we want each row to be the respective modules in each network
             print('Choosing tutors for each layer.')
             winners = [(module[0][0],
-                        torch.abs(torch.tensor([individual_module[1] for individual_module in module])).argmax().item())
+                        torch.abs(torch.tensor([individual_module[1] for individual_module in module])).argmin().item())
                        for module in means_transpose]
             # This looks like a mess. This is a list of tuples. The first element in each tuple is the name of a module.
             # The second element in each tuple is the index of the network that has the greatest average mean gradient.
@@ -256,6 +267,13 @@ optimizers = []
 for i in range(0, number_of_networks):
     networks.append(SingleNetwork(i))
     optimizers.append(optim.SGD(networks[i].parameters(), lr=learning_rate, momentum=momentum))
+
+# Load the model onto the GPU, if available
+if device == 'cuda':
+    for network in networks:
+        network = network.to(device=device)
+        network = torch.nn.DataParallel(network)
+    cudnn.benchmark = True
 
 
 # Test/train each network
