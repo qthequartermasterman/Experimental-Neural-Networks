@@ -31,7 +31,7 @@ HOW TO USE THIS SCRIPT WITH A CUSTOM NEURAL NETWORK
 e.g. __all__ = ['SResNet50', 'SResNet50WithSkips', 'SResNet18WithSkips', 'SResNet50WithDilation']
 3. Make sure that /models/__init__.py includes the line:
     from .FileNameHere import *
-4. Run this script from a command line interface with the proper aruments.
+4. Run this script from a command line interface with the proper arguments.
 """
 from __future__ import print_function
 
