@@ -1,0 +1,10 @@
+============
+Divces:cpu
+
+===========
+args:
+Namespace(bs=512, cifar=100, es=2, fix_seed=123, lr=0.1, netName='SlimNet', pre_process=False, resume=False)
+==================
+BEST_accuracy: 5.18
+==================
+Total parameters: 307300

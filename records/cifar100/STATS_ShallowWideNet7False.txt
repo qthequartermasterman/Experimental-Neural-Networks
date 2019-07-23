@@ -1,0 +1,10 @@
+============
+Divces:cpu
+
+===========
+args:
+Namespace(bs=512, cifar=100, es=150, fix_seed=123, lr=0.1, netName='ShallowWideNet7', pre_process=False, resume=False)
+==================
+BEST_accuracy: 1.08
+==================
+Total parameters: 13115492
