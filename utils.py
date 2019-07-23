@@ -20,11 +20,12 @@ def get_mean_and_std(dataset):
     print('==> Computing mean and std..')
     for inputs, targets in dataloader:
         for i in range(3):
-            mean[i] += inputs[:,i,:,:].mean()
-            std[i] += inputs[:,i,:,:].std()
+            mean[i] += inputs[:, i, :, :].mean()
+            std[i] += inputs[:, i, :, :].std()
     mean.div_(len(dataset))
     std.div_(len(dataset))
     return mean, std
+
 
 def init_params(net):
     '''Init layer parameters.'''
@@ -48,12 +49,14 @@ def init_params(net):
 TOTAL_BAR_LENGTH = 65.
 last_time = time.time()
 begin_time = last_time
+
+
 def progress_bar(current, total, msg=None):
     global last_time, begin_time
     if current == 0:
         begin_time = time.time()  # Reset for new bar.
 
-    cur_len = int(TOTAL_BAR_LENGTH*current/total)
+    cur_len = int(TOTAL_BAR_LENGTH * current / total)
     rest_len = int(TOTAL_BAR_LENGTH - cur_len) - 1
 
     sys.stdout.write(' [')
@@ -83,24 +86,25 @@ def progress_bar(current, total, msg=None):
     # Go back to the center of the bar.
     # for i in range(term_width-int(TOTAL_BAR_LENGTH/2)+2):
     #     sys.stdout.write('\b')
-    sys.stdout.write(' %d/%d ' % (current+1, total))
+    sys.stdout.write(' %d/%d ' % (current + 1, total))
 
-    if current < total-1:
+    if current < total - 1:
         sys.stdout.write('\r')
     else:
         sys.stdout.write('\n')
     sys.stdout.flush()
 
+
 def format_time(seconds):
-    days = int(seconds / 3600/24)
-    seconds = seconds - days*3600*24
+    days = int(seconds / 3600 / 24)
+    seconds = seconds - days * 3600 * 24
     hours = int(seconds / 3600)
-    seconds = seconds - hours*3600
+    seconds = seconds - hours * 3600
     minutes = int(seconds / 60)
-    seconds = seconds - minutes*60
+    seconds = seconds - minutes * 60
     secondsf = int(seconds)
     seconds = seconds - secondsf
-    millis = int(seconds*1000)
+    millis = int(seconds * 1000)
 
     f = ''
     i = 1
@@ -123,7 +127,8 @@ def format_time(seconds):
         f = '0ms'
     return f
 
-def write_record(file_path,str):
+
+def write_record(file_path, str):
     if not os.path.exists(file_path):
         # os.makedirs(file_path)
         os.system(r"touch {}".format(file_path))
@@ -131,9 +136,11 @@ def write_record(file_path,str):
     f.write(str)
     f.close()
 
-def count_parameters(model,all=True):
+
+def count_parameters(model, all=True):
     # If all= Flase, we only return the trainable parameters; tested
     return sum(p.numel() for p in model.parameters() if p.requires_grad or all)
+
 
 def adjust_learning_rate(optimizer, epoch, lr):
     """Sets the learning rate to the initial LR decayed by 10 every 80 epochs"""
