@@ -56,13 +56,13 @@ four separate trials with one individual block removed, and four trials with onl
 
 Conclusions
 
--All experiments suggest that SE blocks on the first layer of a ResNet will decrease its classification accuracy.
+- All experiments suggest that SE blocks on the first layer of a ResNet will decrease its classification accuracy.
 
--All experiments suggest that SE blocks in the second layer of a ResNet increase accuracy the most.
+- All experiments suggest that SE blocks in the second layer of a ResNet increase accuracy the most.
 
--All experiments suggest SE blocks in the third layer of a ResNet have little effect on the accuracy or loss.
+- All experiments suggest SE blocks in the third layer of a ResNet have little effect on the accuracy or loss.
 
--The removal of SE blocks in layer 4 decreased the loss with only a small increase in test accuracy, suggesting that SE blocks in layer 4 mostly help prevent over-fitting, while contributing only a little to the classification.
+- The removal of SE blocks in layer 4 decreased the loss with only a small increase in test accuracy, suggesting that SE blocks in layer 4 mostly help prevent over-fitting, while contributing only a little to the classification.
 
 For a more complete discussion of these results, see [the Ablation Results directory](./AblationResults).
 
