@@ -26,7 +26,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 __all__ = ['SResNet50', 'SResNet50WithSkips', 'SResNet18WithSkips', 'SResNet50WithDilation', 'SResNet18', 'SlimSResNet',
-           'SResNet50WithSkipsDilationAndSquishmoid']
+           'SResNet50WithSkipsDilationAndSquishmoid', 'SResNet18WithOneLayerOfBlock']
 
 
 class Squishmoid(nn.Module):
@@ -192,6 +192,18 @@ class PreActBlock(nn.Module):
         out = self.conv2(F.relu(self.bn2(out)))
         # Add SE block
         out = self.se(out)
+        out += shortcut
+        return out
+
+
+class NoSpatialPreActBlock(PreActBlock):
+    def forward(self, x):
+        out = F.relu(self.bn1(x))
+        shortcut = self.shortcut(out) if hasattr(self, 'shortcut') else x
+        out = self.conv1(out)
+        out = self.conv2(F.relu(self.bn2(out)))
+        # Add SE block
+        # out = self.se(out)
         out += shortcut
         return out
 
@@ -399,6 +411,62 @@ class PreActResNet(nn.Module):
         return out
 
 
+class SResNetWithOneLayerOfSBlocks(nn.Module):
+    def __init__(self, block, num_blocks, non_spatial_block, layer_number_with_s_block, num_classes=1000, init_weights=True, num_input_channels=3):
+        # num_input_channels might be more than 3 if the image is RGBA (i.e. has a transparency mask)
+        print('Inside resnet. Num input channels', num_input_channels)
+        super(SResNetWithOneLayerOfSBlocks, self).__init__()
+        self.in_planes = 64
+        self.planes = [64, 128, 256, 512]  # Number of planes to put in each layer.
+        self.strides = [1, 2, 2, 2]  # Strides to use in each layer
+
+        self.conv1 = nn.Conv2d(num_input_channels, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=1)
+        self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
+        self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
+        self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
+        self.layers = [
+            self._make_layer(non_spatial_block, self.planes[i], num_blocks[i], stride=self.strides[i])
+            if i is not layer_number_with_s_block
+            else self._make_layer(block, self.planes[i], num_blocks[i], stride=self.strides[i])
+            for i in range(0, 4)]
+        self.linear = nn.Linear(512 * block.expansion, num_classes)
+        self.inner_layers = nn.Sequential(*self.layers)
+        if init_weights:
+            self._initialize_weights()
+
+    def _make_layer(self, block, planes, num_blocks, stride):
+        strides = [stride] + [1] * (num_blocks - 1)
+        layers = []
+        for stride in strides:
+            layers.append(block(self.in_planes, planes, stride))
+            self.in_planes = planes * block.expansion
+        return nn.Sequential(*layers)
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+                if m.bias is not None:
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+            elif isinstance(m, nn.Linear):
+                m.weight.data.normal_(0, 0.01)
+                if hasattr(m, 'bias.data'):
+                    m.bias.data.zero_()
+
+    def forward(self, x):
+        out = self.conv1(x)
+        out = self.inner_layers(out)
+        out = F.avg_pool2d(out, 4)
+        out = out.view(out.size(0), -1)
+        out = self.linear(out)
+        return out
+
+
 # noinspection PyPep8Naming
 def SlimSResNet(num_classes=1000, input_channels=3):
     return PreActResNet(PreActBlock, [1, 1, 1, 1], num_classes, num_input_channels=input_channels)
@@ -407,6 +475,11 @@ def SlimSResNet(num_classes=1000, input_channels=3):
 # noinspection PyPep8Naming
 def SResNet18(num_classes=1000, input_channels=3):
     return PreActResNet(PreActBlock, [2, 2, 2, 2], num_classes, num_input_channels=input_channels)
+
+
+# noinspection PyPep8Naming
+def SResNet18WithOneLayerOfBlock(missing_layer, num_classes=1000, input_channels=3):
+    return SResNetWithOneLayerOfSBlocks(PreActBlock, [2, 2, 2, 2], NoSpatialPreActBlock, layer_number_with_s_block=missing_layer, num_input_channels=input_channels)
 
 
 # noinspection PyPep8Naming
