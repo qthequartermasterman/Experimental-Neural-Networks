@@ -1,4 +1,5 @@
-'''Pre-activation ResNet in PyTorch.
+# noinspection SpellCheckingInspection
+"""Pre-activation ResNet in PyTorch.
 
 SResNet50 created by Xu Ma (https://github.com/13952522076/DNN)
 
@@ -17,12 +18,12 @@ over just using dilation.
 Reference:
 [1] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
     Identity Mappings in Deep Residual Networks. arXiv:1603.05027
-'''
+"""
+import math
 import torch
 import torch.nn as nn
+# noinspection PyPep8Naming
 import torch.nn.functional as F
-import math
-from models import imagegradients
 
 __all__ = ['SResNet50', 'SResNet50WithSkips', 'SResNet18WithSkips', 'SResNet50WithDilation', 'SResNet18', 'SlimSResNet',
            'SResNet50WithSkipsDilationAndSquishmoid']
@@ -40,7 +41,7 @@ class ChannelAvgPool(nn.Module):
 
 
 class SpatialLayer(nn.Module):
-    def __init__(self, reduction=16):
+    def __init__(self):
         super(SpatialLayer, self).__init__()
         self.gather = nn.Sequential(
             ChannelAvgPool(),
@@ -62,7 +63,7 @@ class SpatialLayer(nn.Module):
 
 
 class SpatialLayerWithSkips(nn.Module):
-    def __init__(self, reduction=16):
+    def __init__(self):
         super(SpatialLayerWithSkips, self).__init__()
         self.channelavgpool = ChannelAvgPool()
         self.conv1 = nn.Conv2d(1, 1, 5, padding=2)
@@ -107,7 +108,7 @@ class SpatialLayerWithSkips(nn.Module):
 
 
 class SpatialLayerWithDilation(nn.Module):
-    def __init__(self, reduction=16):
+    def __init__(self):
         super(SpatialLayerWithDilation, self).__init__()
         self.gather = nn.Sequential(
             ChannelAvgPool(),
@@ -129,7 +130,7 @@ class SpatialLayerWithDilation(nn.Module):
 
 
 class SpatialLayerWithSkipsDilationAndSquishmoid(nn.Module):
-    def __init__(self, reduction=16):
+    def __init__(self):
         super(SpatialLayerWithSkipsDilationAndSquishmoid, self).__init__()
         self.channelavgpool = ChannelAvgPool()
         self.conv1 = nn.Conv2d(1, 1, 5, padding=4, dilation=2)
@@ -177,7 +178,7 @@ class PreActBlock(nn.Module):
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(planes)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
-        self.se = SpatialLayer(planes * self.expansion)
+        self.se = SpatialLayer()
 
         if stride != 1 or in_planes != self.expansion * planes:
             self.shortcut = nn.Sequential(
@@ -196,7 +197,7 @@ class PreActBlock(nn.Module):
 
 
 class PreActBlockWithSkips(nn.Module):
-    '''Pre-activation version of the BasicBlock.'''
+    """Pre-activation version of the BasicBlock."""
     expansion = 1
 
     def __init__(self, in_planes, planes, stride=1):
@@ -205,7 +206,7 @@ class PreActBlockWithSkips(nn.Module):
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(planes)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
-        self.se = SpatialLayerWithSkips(planes * self.expansion)
+        self.se = SpatialLayerWithSkips()
 
         if stride != 1 or in_planes != self.expansion * planes:
             self.shortcut = nn.Sequential(
@@ -224,7 +225,7 @@ class PreActBlockWithSkips(nn.Module):
 
 
 class PreActBottleneck(nn.Module):
-    '''Pre-activation version of the original Bottleneck module.'''
+    """Pre-activation version of the original Bottleneck module."""
     expansion = 4
 
     def __init__(self, in_planes, planes, stride=1):
@@ -235,7 +236,7 @@ class PreActBottleneck(nn.Module):
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn3 = nn.BatchNorm2d(planes)
         self.conv3 = nn.Conv2d(planes, self.expansion * planes, kernel_size=1, bias=False)
-        self.se = SpatialLayer(planes * self.expansion)
+        self.se = SpatialLayer()
 
         if stride != 1 or in_planes != self.expansion * planes:
             self.shortcut = nn.Sequential(
@@ -255,7 +256,7 @@ class PreActBottleneck(nn.Module):
 
 
 class PreActBottleneckWithDilation(nn.Module):
-    '''Pre-activation version of the original Bottleneck module.'''
+    """Pre-activation version of the original Bottleneck module."""
     expansion = 4
 
     def __init__(self, in_planes, planes, stride=1):
@@ -266,7 +267,7 @@ class PreActBottleneckWithDilation(nn.Module):
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn3 = nn.BatchNorm2d(planes)
         self.conv3 = nn.Conv2d(planes, self.expansion * planes, kernel_size=1, bias=False)
-        self.se = SpatialLayerWithDilation(planes * self.expansion)
+        self.se = SpatialLayerWithDilation()
 
         if stride != 1 or in_planes != self.expansion * planes:
             self.shortcut = nn.Sequential(
@@ -286,7 +287,7 @@ class PreActBottleneckWithDilation(nn.Module):
 
 
 class PreActBottleneckWithSkips(nn.Module):
-    '''Pre-activation version of the original Bottleneck module.'''
+    """Pre-activation version of the original Bottleneck module."""
     expansion = 4
 
     def __init__(self, in_planes, planes, stride=1):
@@ -297,7 +298,7 @@ class PreActBottleneckWithSkips(nn.Module):
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn3 = nn.BatchNorm2d(planes)
         self.conv3 = nn.Conv2d(planes, self.expansion * planes, kernel_size=1, bias=False)
-        self.se = SpatialLayerWithSkips(planes * self.expansion)
+        self.se = SpatialLayerWithSkips()
 
         if stride != 1 or in_planes != self.expansion * planes:
             self.shortcut = nn.Sequential(
@@ -317,7 +318,7 @@ class PreActBottleneckWithSkips(nn.Module):
 
 
 class PreActBottleneckWithSkipsDilationAndSquishmoid(nn.Module):
-    '''Pre-activation version of the original Bottleneck module.'''
+    """Pre-activation version of the original Bottleneck module."""
     expansion = 4
 
     def __init__(self, in_planes, planes, stride=1):
@@ -328,7 +329,7 @@ class PreActBottleneckWithSkipsDilationAndSquishmoid(nn.Module):
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn3 = nn.BatchNorm2d(planes)
         self.conv3 = nn.Conv2d(planes, self.expansion * planes, kernel_size=1, bias=False)
-        self.se = SpatialLayerWithSkipsDilationAndSquishmoid(planes * self.expansion)
+        self.se = SpatialLayerWithSkipsDilationAndSquishmoid()
 
         if stride != 1 or in_planes != self.expansion * planes:
             self.shortcut = nn.Sequential(
@@ -398,42 +399,52 @@ class PreActResNet(nn.Module):
         return out
 
 
+# noinspection PyPep8Naming
 def SlimSResNet(num_classes=1000, input_channels=3):
     return PreActResNet(PreActBlock, [1, 1, 1, 1], num_classes, num_input_channels=input_channels)
 
 
+# noinspection PyPep8Naming
 def SResNet18(num_classes=1000, input_channels=3):
     return PreActResNet(PreActBlock, [2, 2, 2, 2], num_classes, num_input_channels=input_channels)
 
 
+# noinspection PyPep8Naming
 def SResNet34(num_classes=1000):
     return PreActResNet(PreActBlock, [3, 4, 6, 3], num_classes)
 
 
+# noinspection PyPep8Naming
 def SResNet50(num_classes=1000, input_channels=3):
     return PreActResNet(PreActBottleneck, [3, 4, 6, 3], num_classes, num_input_channels=input_channels)
 
 
+# noinspection PyPep8Naming
 def SResNet18WithSkips(num_classes=1000):
     return PreActResNet(PreActBlockWithSkips, [2, 2, 2, 2], num_classes)
 
 
+# noinspection PyPep8Naming
 def SResNet50WithSkips(num_classes=1000):
     return PreActResNet(PreActBottleneckWithSkips, [3, 4, 6, 3], num_classes)
 
 
+# noinspection PyPep8Naming
 def SResNet50WithDilation(num_classes=1000):
     return PreActResNet(PreActBottleneckWithDilation, [3, 4, 6, 3], num_classes)
 
 
+# noinspection PyPep8Naming
 def SResNet50WithSkipsDilationAndSquishmoid(num_classes=1000):
     return PreActResNet(PreActBottleneckWithSkipsDilationAndSquishmoid, [3, 4, 6, 3], num_classes)
 
 
+# noinspection PyPep8Naming
 def SResNet101(num_classes=1000):
     return PreActResNet(PreActBottleneck, [3, 4, 23, 3], num_classes)
 
 
+# noinspection PyPep8Naming
 def SResNet152(num_classes=1000):
     return PreActResNet(PreActBottleneck, [3, 8, 36, 3], num_classes)
 
@@ -457,5 +468,5 @@ def test_dilation():
 
 
 # test()
-def convsize(padding, dilation, kernel, stride, input):
-    return math.floor((input + 2 * padding - dilation * (kernel - 1) - 1) / stride + 1)
+def convsize(padding, dilation, kernel, stride, input_size):
+    return math.floor((input_size + 2 * padding - dilation * (kernel - 1) - 1) / stride + 1)
