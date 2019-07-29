@@ -449,6 +449,7 @@ def SResNet152(num_classes=1000):
     return PreActResNet(PreActBottleneck, [3, 8, 36, 3], num_classes)
 
 
+# TESTING
 def test():
     net = SResNet50(num_classes=100)
     y = net((torch.randn(1, 3, 32, 32)))
