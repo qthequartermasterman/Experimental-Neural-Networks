@@ -40,9 +40,11 @@ class SEBlock(nn.Module):
         b, c, _, _ = x.size()
         y = self.avg_pool(x).view(b, c)
         y = self.fc(y).view(b, c, 1, 1)
-        post = x*y.expand_as(x)
+        post = x * y.expand_as(x)
         if residual is not None:
-            return (post+residual)/2  # add the skip connection from previous layer
+            return nn.Conv2d(post.shape[1] + residual.shape[1], x.shape[1], kernel_size=1)(
+                torch.cat([post, residual], dim=1))
+            # return (post+residual)/2  # add the skip connection from previous layer
         else:
             return post
 
@@ -67,7 +69,9 @@ class SpatialBlock(nn.Module):
         y = nn.functional.interpolate(y, scale_factor=2, mode='nearest')
         y = self.excite(y)
         if residual is not None:
-            return (x * y + residual)/2  # add the skip connection from previous layer
+            return nn.Conv2d(x.shape[1] + residual.shape[1], x.shape[1], kernel_size=1)(
+                torch.cat([x * y, residual], dim=1))
+            # return (x * y + residual)/2  # add the skip connection from previous layer
         else:
             return x * y
 
@@ -119,18 +123,19 @@ class Layer(nn.Module):
 class FullNetwork(nn.Module):
     def __init__(self, num_classes=10):
         super(FullNetwork, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
-        self.layer1 = Layer(64)
-        #self.layer2 = Layer(64)
-        #self.layer3 = Layer(64)
-        self.layer4 = Layer(64)
-        self.linear = nn.Linear(64*32*32, num_classes)
+        self.internal_size = 16
+        self.conv1 = nn.Conv2d(3, self.internal_size, kernel_size=3, stride=1, padding=1, bias=False)
+        self.layer1 = Layer(self.internal_size)
+        # self.layer2 = Layer(64)
+        # self.layer3 = Layer(64)
+        self.layer4 = Layer(self.internal_size)
+        self.linear = nn.Linear(self.internal_size * 32 * 32, num_classes)
 
     def forward(self, x):
         out = self.conv1(x)
         out, se, spatial = self.layer1(out, None, None)  # There are no skip connections yet
-        #out, se, spatial = self.layer2(out, se, spatial)  # Add skip connection
-        #out, se, spatial = self.layer3(out, se, spatial)  # Add skip connection
+        # out, se, spatial = self.layer2(out, se, spatial)  # Add skip connection
+        # out, se, spatial = self.layer3(out, se, spatial)  # Add skip connection
         out, _, _ = self.layer4(out, se, spatial)  # Add skip connection
         out = out.view(out.size(0), -1)
         out = self.linear(out)  # Classify
@@ -138,14 +143,14 @@ class FullNetwork(nn.Module):
 
 
 def test():
-    test = torch.rand((1, 3, 32, 32))
+    random_input = torch.rand((1, 3, 32, 32))
     net = FullNetwork()
 
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
     print('Parameters: {}'.format(count_parameters(net)))
-    return net(test)
+    return net(random_input)
 
 
 def CompoundAttentionNet(num_classes=100):
